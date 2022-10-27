@@ -143,7 +143,7 @@ style.textContent = getVisiblesCSS();
 
 //    await new Promise( resolve => setTimeout( resolve, 5000 ) );
 
-/* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
+//* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
 // remove elementsm which are not on the first screen
 firstScreenElements.push( style );
 document.body.querySelectorAll( '*' ).forEach( el => {
@@ -167,3 +167,9 @@ height:50vh;
 textarea.addEventListener( 'click', (e) => {
     e.target.select();
 });
+
+/* remove all styles except the new inlined one
+document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) => {
+    if ( el.id && el.id === 'first-screen-inline-css' ) { return; }
+    el.remove();
+}); //*/
