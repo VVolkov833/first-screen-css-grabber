@@ -143,12 +143,13 @@ style.textContent = getVisiblesCSS();
 
 //    await new Promise( resolve => setTimeout( resolve, 5000 ) );
 
+/* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
 // remove elementsm which are not on the first screen
 firstScreenElements.push( style );
 document.body.querySelectorAll( '*' ).forEach( el => {
     if ( firstScreenElements.includes( el ) ) { return; }
     el.remove();
-});
+}); //*/
 // remove the <style and <link
 allStyles.forEach( el => {
     el.remove();
