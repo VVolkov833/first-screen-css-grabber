@@ -1,6 +1,5 @@
 const allStyles = [];
 document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) => {
-    //if ( i === 7 ) { console.log( el ); return; }
     allStyles.push( el );
 });
 
@@ -52,7 +51,7 @@ const getVisibleElements = () => {
         width: ( window.innerWidth || document.documentElement.clientWidth ) + 1,
         height: ( window.innerHeight || document.documentElement.clientHeight ) + 1
     };
-    w.height = Math.round( w.height * 1.5 );
+    w.height = Math.round( w.height * 1.1 );
 
     const onFirstScreen = el => {
         const r = el.getBoundingClientRect();
@@ -112,13 +111,12 @@ const getVisiblesCSS = () => {
                 return;
             }
             if ( value.constructor.name !== 'CSSStyleRule' ) {
-                //console.error( 'Not used rule ' + value.constructor.name );
-                //console.log( value );
+                //console.error( 'Not used rule ' + value.constructor.name ); console.log( value );
                 return;
             }
 
             const isInFirstScreen = Array.prototype.some.call( document.querySelectorAll( value.selectorText.replace( /\s:{1,2}(?:before|after)/gi, ' *' ).replace( /:{1,2}(?:before|after)/gi, '' ) ), el => {
-                // ++can also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
+                // ++should also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
                 return firstScreenElements.includes( el );
             });
             if ( !isInFirstScreen ) { return; }
@@ -148,7 +146,7 @@ style.textContent = getVisiblesCSS();
 // remove elementsm which are not on the first screen
 firstScreenElements.push( style );
 document.body.querySelectorAll( '*' ).forEach( el => {
-    if ( firstScreenElements.includes( el ) ) { console.log( el ); return; }
+    if ( firstScreenElements.includes( el ) ) { return; }
     el.remove();
 });
 // remove the <style and <link
