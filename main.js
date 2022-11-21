@@ -116,7 +116,7 @@ const getVisiblesCSS = () => {
             }
 
             const isInFirstScreen = Array.prototype.some.call( document.querySelectorAll( value.selectorText.replace( /\s:{1,2}(?:before|after)/gi, ' *' ).replace( /:{1,2}(?:before|after)/gi, '' ).replace(/^[\,\s]+|[\,\s]+$/g, '') ), el => {
-                // ++should also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
+                // ++can also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
                 return firstScreenElements.includes( el );
             });
             if ( !isInFirstScreen ) { return; }
@@ -175,3 +175,6 @@ document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) =>
 }); //*/
 // ++add textarea with those below the first screen
 // ++add the unused leftovers
+// ++leftovers + unused
+// ++doubles
+// ++add list of exceptions
