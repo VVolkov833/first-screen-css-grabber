@@ -1,9 +1,9 @@
-const allStyles = [];
+const allStyles = []; // contains all tags providing styling
 document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) => {
     allStyles.push( el );
 });
 
-const fetchText = async url => {
+const fetchText = async url => { // get the content of a .css file by the src url
     const response = await fetch( url );
     if ( !response.ok ) { return ''; }
     return await response.text();
@@ -89,7 +89,7 @@ const getVisiblesCSS = () => {
             const [key, value] = entry;
             if ( value.constructor.name === 'CSSMediaRule' ) {
                 const result = iterateRules( value.cssRules );
-                firstScreenCSS += result ? '@media ' + value.conditionText + '{' + result + '}' : ''; // ++unite with similar rules
+                firstScreenCSS += result ? '@media ' + value.conditionText + '{' + result + '}' : ''; // ++can unite with similar rules, like CSSSupportsRule
                 return;
             }
             if ( value.constructor.name === 'CSSSupportsRule' ) {
@@ -115,7 +115,7 @@ const getVisiblesCSS = () => {
                 return;
             }
 
-            const isInFirstScreen = Array.prototype.some.call( document.querySelectorAll( value.selectorText.replace( /\s:{1,2}(?:before|after)/gi, ' *' ).replace( /:{1,2}(?:before|after)/gi, '' ) ), el => {
+            const isInFirstScreen = Array.prototype.some.call( document.querySelectorAll( value.selectorText.replace( /\s:{1,2}(?:before|after)/gi, ' *' ).replace( /:{1,2}(?:before|after)/gi, '' ).replace(/^[\,\s]+|[\,\s]+$/g, '') ), el => {
                 // ++should also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
                 return firstScreenElements.includes( el );
             });
@@ -173,3 +173,5 @@ document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) =>
     if ( el.id && el.id === 'first-screen-inline-css' ) { return; }
     el.remove();
 }); //*/
+// ++add textarea with those below the first screen
+// ++add the unused leftovers
