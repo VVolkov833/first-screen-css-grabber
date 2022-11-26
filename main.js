@@ -3,20 +3,6 @@ document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) =>
     allStyles.push( el );
 });
 
-const fetchText = async url => { // get the content of a .css file by the src url
-    const response = await fetch( url );
-    if ( !response.ok ) { return ''; }
-    return await response.text();
-}
-const allStylesContent = await Promise.all( allStyles.map( async el => {
-    // style
-    if ( el.tagName.toLowerCase() === 'style' ) { return el.textContent; }
-    // link
-    if ( !el.href ) { return ''; }
-    return await fetchText( el.href );
-
-}));
-
 const allStylesURLBase = allStyles.map( el => {
     const basename = url => {
         const doc = document.implementation.createHTMLDocument( '' ),
@@ -33,6 +19,20 @@ const allStylesURLBase = allStyles.map( el => {
     return basename( el.href );
 });
 
+const fetchContent = async url => { // get the content of a .css file by the src url
+    const response = await fetch( url );
+    if ( !response.ok ) { return ''; }
+    return await response.text();
+}
+const allStylesContent = await Promise.all( allStyles.map( async el => {
+    // style
+    if ( el.tagName.toLowerCase() === 'style' ) { return el.textContent; }
+    // link
+    if ( !el.href ) { return ''; }
+    return await fetchContent( el.href );
+
+}));
+
 const parseCSS = s => {
     const doc = document.implementation.createHTMLDocument( '' ),
           style = doc.createElement( 'style' );
@@ -40,26 +40,25 @@ const parseCSS = s => {
     doc.body.appendChild( style );
     return style.sheet.cssRules;
 };
-const allStylesParsed = allStylesContent.map( sc => {
+const allStylesContentParsed = allStylesContent.map( sc => {
     return parseCSS( sc );
 });
 
+const getFirstScreenElements = () => {
 
-const getVisibleElements = () => {
-
-    const w = {
+    const win = {
         width: ( window.innerWidth || document.documentElement.clientWidth ) + 1,
         height: ( window.innerHeight || document.documentElement.clientHeight ) + 1
     };
-    w.height = Math.round( w.height * 1.1 );
+    win.height = Math.round( win.height * 1.1 );
 
     const onFirstScreen = el => {
         const r = el.getBoundingClientRect();
         const s = { top: document.documentElement.scrollTop, left: document.documentElement.scrollLeft };
         return (
-            r.top + s.top < w.height &&
+            r.top + s.top < win.height &&
             //r.bottom + s.top > 0 &&
-            r.left + s.left < w.width //&&
+            r.left + s.left < win.width //&&
             //r.right + s.left > 0
         );
     };
@@ -74,16 +73,19 @@ const getVisibleElements = () => {
 
     return firstScreenElements;
 };
-let firstScreenElements = getVisibleElements();
+let firstScreenElements = getFirstScreenElements();
 
 
-const getVisiblesCSS = () => {
+const filterVisibleCSS = () => {
     let firstScreenCSS = '';
 
     const iterateRules = ( list, ind ) => {
         let firstScreenCSS = '';
         const fixUrls = url => {
-            return url.replace( /url\(('|")?\./gi, 'url($1'+allStylesURLBase[ ind ]+'.' );
+            return url.replace( /url\(('|")?(https?\:\/\/|\/|\/\/|data\:)?/gi, (m, m1, m2) => {
+                if ( m2 ) { return m }
+                return 'url('+m1+allStylesURLBase[ ind ];
+            });
         };
         Object.entries( list ).forEach( entry => {
             const [key, value] = entry;
@@ -107,13 +109,14 @@ const getVisiblesCSS = () => {
                 // ++assume, that it is absolute.. for now, as @import is not often used in our projects
                 const replaceToken = '{{' + ind + key + '}}'
                 firstScreenCSS += replaceToken;
-                fetchText( value.href ).then( t => { firstScreenCSS.replace( replaceToken, t ) } ); // ++parse ++filter
+                fetchContent( value.href ).then( t => { firstScreenCSS.replace( replaceToken, t ) } ); // ++parse ++filter
                 return;
             }
             if ( value.constructor.name !== 'CSSStyleRule' ) {
                 //console.error( 'Not used rule ' + value.constructor.name ); console.log( value );
                 return;
             }
+            //@charset "UTF-8";
 
             const isInFirstScreen = Array.prototype.some.call( document.querySelectorAll( value.selectorText.replace( /\s:{1,2}(?:before|after)/gi, ' *' ).replace( /:{1,2}(?:before|after)/gi, '' ).replace(/^[\,\s]+|[\,\s]+$/g, '') ), el => {
                 // ++can also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
@@ -130,7 +133,7 @@ const getVisiblesCSS = () => {
         return firstScreenCSS;
     };
 
-    allStylesParsed.forEach( (s,i) => {
+    allStylesContentParsed.forEach( (s,i) => {
         firstScreenCSS += iterateRules( s, i );
     });
 
@@ -139,7 +142,7 @@ const getVisiblesCSS = () => {
 
 const style = document.createElement( 'style' );
 document.body.prepend( style );
-style.textContent = getVisiblesCSS();
+style.textContent = filterVisibleCSS();
 
 //    await new Promise( resolve => setTimeout( resolve, 5000 ) );
 
@@ -168,13 +171,4 @@ textarea.addEventListener( 'click', (e) => {
     e.target.select();
 });
 
-/* remove all styles except the new inlined one
-document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) => {
-    if ( el.id && el.id === 'first-screen-inline-css' ) { return; }
-    el.remove();
-}); //*/
-// ++add textarea with those below the first screen
-// ++add the unused leftovers
-// ++leftovers + unused
-// ++doubles
-// ++add list of exceptions
+// ++add the list to pick which styles to proceed
