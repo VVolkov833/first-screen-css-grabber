@@ -75,74 +75,92 @@ const getFirstScreenElements = () => {
 };
 let firstScreenElements = getFirstScreenElements();
 
-
 const filterVisibleCSS = () => {
-    let firstScreenCSS = '';
 
-    const iterateRules = ( list, ind ) => {
-        let firstScreenCSS = '';
+    let CSS = { firstScreenCSS: '', restScreenCSS: '', unusedCSS: '', restAndUnusedCSS: '' };
+
+    const goThroughRules = ( list, ind ) => {
+
         const fixUrls = url => {
             return url.replace( /url\(('|")?(https?\:\/\/|\/|\/\/|data\:)?/gi, (m, m1, m2) => {
                 if ( m2 ) { return m }
-                return 'url('+m1+allStylesURLBase[ ind ];
+                return 'url(' + m1 + allStylesURLBase[ ind ];
             });
         };
+
+        let css = {};
+        Object.keys( CSS ).forEach( a => { css[ a ] = '' });
+
         Object.entries( list ).forEach( entry => {
             const [key, value] = entry;
-            if ( value.constructor.name === 'CSSMediaRule' ) {
-                const result = iterateRules( value.cssRules );
-                firstScreenCSS += result ? '@media ' + value.conditionText + '{' + result + '}' : ''; // ++can unite with similar rules, like CSSSupportsRule
+
+            const wrappingRules = { CSSMediaRule: '@media', CSSSupportsRule: '@supports' };
+            if ( Object.keys( wrappingRules ).includes( value.constructor.name ) ) {
+                const c = goThroughRules( value.cssRules );
+                const format = css => {
+                    return css ? wrappingRules[ value.constructor.name ]+' ' + value.conditionText + '{' + css + '}' : ''; // ++can format here with tabs and line breaks
+                };
+                Object.entries( c ).forEach( a => { css[ a[0] ] += format( a[1] ) });
                 return;
             }
-            if ( value.constructor.name === 'CSSSupportsRule' ) {
-                const result = iterateRules( value.cssRules );
-                firstScreenCSS += result ? '@supports ' + value.conditionText + '{' + result + '}' : '';
-                return;
-            }
+
             if ( value.constructor.name === 'CSSFontFaceRule' ) {
                 value.style.src = fixUrls( value.style.src );
-                firstScreenCSS += value.cssText;
+                css.firstScreenCSS += value.cssText;
                 return;
             }
+
+            /*
             if ( value.constructor.name === 'CSSImportRule' ) {
-                return;
-                // ++assume, that it is absolute.. for now, as @import is not often used in our projects
-                const replaceToken = '{{' + ind + key + '}}'
+                // ++assume, that it is absolute.. for now, as @import is not often used in our projects. write me if you want it working
+                const replaceToken = '{{' + ind + key + '}}'; // save the place to add css after fetching and parsing
                 firstScreenCSS += replaceToken;
                 fetchContent( value.href ).then( t => { firstScreenCSS.replace( replaceToken, t ) } ); // ++parse ++filter
                 return;
             }
+            //*/
             if ( value.constructor.name !== 'CSSStyleRule' ) {
                 //console.error( 'Not used rule ' + value.constructor.name ); console.log( value );
                 return;
             }
-            //@charset "UTF-8";
 
-            const isInFirstScreen = Array.prototype.some.call( document.querySelectorAll( value.selectorText.replace( /\s:{1,2}(?:before|after)/gi, ' *' ).replace( /:{1,2}(?:before|after)/gi, '' ).replace(/^[\,\s]+|[\,\s]+$/g, '') ), el => {
-                // ++can also separate selectors by , and check each separately and exclude :focus, :hover and other to make everything lighter
-                return firstScreenElements.includes( el );
+            const clearSelector = value.selectorText
+                .replace( /\s:{1,2}(?:before|after)/gi, ' *' )
+                .replace( /:{1,2}(?:before|after)/gi, '' )
+                .replace(/^[\,\s]+|[\,\s]+$/g, '');
+            const elements = document.querySelectorAll( clearSelector );
+            const isInScreen = elements.length || false; // ++?? can return here
+            const isInFirstScreen = Array.prototype.some.call( elements, el => { return firstScreenElements.includes( el ) });
+
+            // fix url() address
+            ['background', 'background-image', 'mask', 'mask-image'].forEach( att => {
+                if ( !value.style[ att ] ) { return }
+                value.style[ att ] = fixUrls( value.style[ att ] );
             });
-            if ( !isInFirstScreen ) { return; }
 
-            if ( value.style.backgroundImage ) {
-                value.style.backgroundImage = fixUrls( value.style.backgroundImage );
-            };
+            css.firstScreenCSS += isInFirstScreen && value.cssText || '';
+            css.restScreenCSS += isInScreen && !isInFirstScreen && value.cssText || '';
+            css.unusedCSS += !isInScreen && value.cssText || '';
+            css.restAndUnusedCSS += isInScreen && value.cssText || '';
 
-            firstScreenCSS += value.cssText;
         });
-        return firstScreenCSS;
+
+        return css;
     };
 
     allStylesContentParsed.forEach( (s,i) => {
-        firstScreenCSS += iterateRules( s, i );
+        const css = goThroughRules( s, i );
+        Object.entries( css ).forEach( a => { CSS[ a[0] ] += a[1] });
     });
 
-    return firstScreenCSS;
+    return CSS;
 };
+
+const { firstScreenCSS, restScreenCSS, unusedCSS, restAndUnusedCSS } = filterVisibleCSS();
 
 const style = document.createElement( 'style' );
 document.body.prepend( style );
-style.textContent = filterVisibleCSS();
+style.textContent = firstScreenCSS;
 
 //    await new Promise( resolve => setTimeout( resolve, 5000 ) );
 
@@ -159,16 +177,34 @@ allStyles.forEach( el => {
 });
 
 // print the styles
-const textarea = document.createElement( 'textarea' );
-document.body.append( textarea );
-textarea.value = style.textContent;
-textarea.style = `
-display:block;
-width:100%;
-height:50vh;
-`;
-textarea.addEventListener( 'click', (e) => {
-    e.target.select();
-});
+const printStyles = (title,content) => {
+    const headline = document.createElement( 'h2' );
+    document.body.append( headline );
+    headline.innerHTML = title;
+    const textarea = document.createElement( 'textarea' );
+    document.body.append( textarea );
+    textarea.value = content;
+    textarea.style = `
+        position:static;
+        display:block;
+        width:100%;
+        height:50vh;
+    `;
+    textarea.addEventListener( 'click', (e) => {
+        e.target.select();
+    });
+};
+
+printStyles( 'First Screen CSS', firstScreenCSS );
+printStyles( 'Rest Screen CSS', restScreenCSS );
+printStyles( 'Unused CSS', unusedCSS );
+printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
+
+
+// ++beautify
 
 // ++add the list to pick which styles to proceed
+// ++mention @import
+
+// ++can also separate selectors by , for smaller first screen and check each separately, but that will cause doubling of attributes on the rest screen
+// ++exclude :focus, :hover and others from the first screen?
