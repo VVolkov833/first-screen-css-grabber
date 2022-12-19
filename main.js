@@ -129,6 +129,10 @@ const filterVisibleCSS = () => {
                 .replace( /:{1,2}(?:before|after|focus\-within|focus\-visible|first\-letter|focus|hover|active|target|visited)/gi, '' ) // .class::before -> .class
                 .replace( /:not\(\)/, '' ) // :not(:focus)
                 .replace(/^[\,\s]+|[\,\s]+$/g, ''); // , .class,
+            try { // in case there are broken selectors after clearing..
+                document.querySelector( clearSelector );
+            } catch { return }
+
             const elements = document.querySelectorAll( clearSelector );
 
             const isInScreen = elements.length || false; // ++?? can return here
@@ -208,5 +212,5 @@ printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
 // ++add the list to pick which styles to proceed
 // ++mention @import
 
-// ++can also separate selectors by , for smaller first screen and check each separately, but that will cause doubling of attributes on the rest screen
-// ++exclude :focus, :hover and others from the first screen? or is it done?
+// ++should also separate selectors by , for smaller first screen and check each separately, but that will cause doubling of attributes on the rest screen
+// ++exclude :focus, :hover and others from the first screen
