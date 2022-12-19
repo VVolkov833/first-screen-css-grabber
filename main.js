@@ -98,7 +98,7 @@ const filterVisibleCSS = () => {
             if ( Object.keys( wrappingRules ).includes( value.constructor.name ) ) {
                 const c = goThroughRules( value.cssRules );
                 const format = css => {
-                    return css ? wrappingRules[ value.constructor.name ]+' ' + value.conditionText + '{' + css + '}' : ''; // ++can format here with tabs and line breaks
+                    return css ? wrappingRules[ value.constructor.name ]+' '+value.conditionText+'{' + css + '}' : ''; // ++can format here with tabs and line breaks
                 };
                 Object.entries( c ).forEach( a => { css[ a[0] ] += format( a[1] ) });
                 return;
@@ -125,10 +125,12 @@ const filterVisibleCSS = () => {
             }
 
             const clearSelector = value.selectorText
-                .replace( /\s:{1,2}(?:before|after)/gi, ' *' )
-                .replace( /:{1,2}(?:before|after)/gi, '' )
-                .replace(/^[\,\s]+|[\,\s]+$/g, '');
+                .replace( /\s:{1,2}(?:before|after)/gi, ' *' ) // .class ::before -> .class *
+                .replace( /:{1,2}(?:before|after|focus\-within|focus\-visible|first\-letter|focus|hover|active|target|visited)/gi, '' ) // .class::before -> .class
+                .replace( /:not\(\)/, '' ) // :not(:focus)
+                .replace(/^[\,\s]+|[\,\s]+$/g, ''); // , .class,
             const elements = document.querySelectorAll( clearSelector );
+
             const isInScreen = elements.length || false; // ++?? can return here
             const isInFirstScreen = Array.prototype.some.call( elements, el => { return firstScreenElements.includes( el ) });
 
@@ -207,4 +209,4 @@ printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
 // ++mention @import
 
 // ++can also separate selectors by , for smaller first screen and check each separately, but that will cause doubling of attributes on the rest screen
-// ++exclude :focus, :hover and others from the first screen?
+// ++exclude :focus, :hover and others from the first screen? or is it done?
