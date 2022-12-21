@@ -207,6 +207,7 @@ printStyles( 'Unused CSS', unusedCSS );
 printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
 
 
+// found one undefined for the url base on https://plastische-chirurgie-giessler.de/home/leistungen/brust/bruststraffung/ with logo-giessler-sticky.png
 // ++beautify
 
 // ++add the list to pick which styles to proceed
@@ -214,3 +215,4 @@ printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
 
 // ++should also separate selectors by , for smaller first screen and check each separately, but that will cause doubling of attributes on the rest screen
 // ++exclude :focus, :hover and others from the first screen
+// ++borlabs overflow (position:fixed) goes to second screen
