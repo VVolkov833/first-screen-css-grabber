@@ -1,38 +1,21 @@
-const allStyles = []; // contains all tags providing styling
-document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el, i ) => {
-    allStyles.push( el );
-});
+// ++ test cases for different url variants / a ./ ../ http://
+// ++ test cases for recoursive media with different url variants
+// ++ mention @import can behave like @media
 
-const allStylesURLBase = allStyles.map( el => {
-    const basename = url => {
-        const doc = document.implementation.createHTMLDocument( '' ),
-              a = doc.createElement( 'a' );
-        a.href = url;
-        return a.href.replace( a.hash, '' ).replace( a.search, '' ).replace( /([^\/])\/[^\.\/]+(?:\.[^\.\/]+)+$/, '$1/' ); // hash, query, filename
-    };
-    // style
-    if ( el.tagName.toLowerCase() === 'style' ) {
-        return basename( window.location.href );
-    }
-    // link
-    if ( !el.href ) { return ''; }
-    return basename( el.href );
-});
-
-const fetchContent = async url => { // get the content of a .css file by the src url
+const getPath = url => {
+    const doc = document.implementation.createHTMLDocument( '' ),
+          a = doc.createElement( 'a' );
+    a.href = url;
+    return a.href.replace( a.hash, '' ).replace( a.search, '' ).replace( /([^\/])\/[^\.\/]+(?:\.[^\.\/]+)+$/, '$1/' ); // hash, query, filename
+};
+const fixUrl = (url, base_path) => {
+    return /^\.{1,2}\//.test( url ) ? base_path + m : m;
+};
+const getContent = async url => {
     const response = await fetch( url );
     if ( !response.ok ) { return ''; }
     return await response.text();
 }
-const allStylesContent = await Promise.all( allStyles.map( async el => {
-    // style
-    if ( el.tagName.toLowerCase() === 'style' ) { return el.textContent; }
-    // link
-    if ( !el.href ) { return ''; }
-    return await fetchContent( el.href );
-
-}));
-
 const parseCSS = s => {
     const doc = document.implementation.createHTMLDocument( '' ),
           style = doc.createElement( 'style' );
@@ -40,9 +23,54 @@ const parseCSS = s => {
     doc.body.appendChild( style );
     return style.sheet.cssRules;
 };
-const allStylesContentParsed = allStylesContent.map( sc => {
-    return parseCSS( sc );
+const styleStructure = async (el) => {
+    const url = el?.href || window.location.href,
+          tag = el?.tagName?.toLowerCase() || 'import',
+          content = el?.textContent || await getContent( url );
+    let result = {
+        tag,
+        url,
+        content,
+        path : getPath( url ), // !!!!!!!!!!!error is probably here
+        parsed : parseCSS( content ),
+        el : el ? el : undefined
+    };
+
+    result.imported = await importStyles( result.parsed, result.path );
+    // ++media value before parsing
+
+    return result;
+};
+const importStyles = async ( parsed, path ) => {
+    let style = [];
+    Object.entries( parsed ).some( async entry => {
+        const [key, rule] = entry;
+        if ( rule.constructor.name !== 'CSSImportRule' ) { return false }
+        style.push( styleStructure( rule ) );
+        return false;
+    });
+    return style;
+};
+
+let allStyles = []; // contains all tags providing styling
+document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el ) => {
+    allStyles.push( el );
 });
+
+allStyles = await Promise.all( allStyles.map( async el => {
+    //style.import = await importStyles( style.parsed, style.path );
+    return await styleStructure( el );
+}));
+
+console.log( allStyles );
+throw '';
+
+allStyles.forEach( a => {
+    console.log( a.import );
+});
+
+throw '';
+
 
 const getFirstScreenElements = () => {
 
@@ -206,6 +234,8 @@ printStyles( 'Rest Screen CSS', restScreenCSS );
 printStyles( 'Unused CSS', unusedCSS );
 printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
 
+
+// make the flat tree of styles first?
 
 // found one undefined for the url base on https://plastische-chirurgie-giessler.de/home/leistungen/brust/bruststraffung/ with logo-giessler-sticky.png
 // ++beautify
