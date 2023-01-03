@@ -2,19 +2,37 @@
 // ++ test cases for recoursive media with different url variants
 // ++ mention @import can behave like @media
 
-const getPath = url => {
-    const doc = document.implementation.createHTMLDocument( '' ),
-          a = doc.createElement( 'a' );
-    a.href = url;
-    return a.href.replace( a.hash, '' ).replace( a.search, '' ).replace( /([^\/])\/[^\.\/]+(?:\.[^\.\/]+)+$/, '$1/' ); // hash, query, filename
-};
-const fixUrl = (url, base_path) => {
-    return /^\.{1,2}\//.test( url ) ? base_path + m : m;
-};
 const getContent = async url => {
+    const getPath = url => {
+        const doc = document.implementation.createHTMLDocument( '' ),
+              a = doc.createElement( 'a' );
+        a.href = url;
+        return a.href.replace( a.hash, '' ).replace( a.search, '' ).replace( /([^\/])\/[^\.\/]+(?:\.[^\.\/]+)+$/, '$1/' ); // hash, query, filename
+    };
+    const path = getPath( url );
+    const fixUrls = content => {
+        let new_content = content;
+        new_content = new_content.replace( /url\(('|")?(https?\:\/\/|\/|\/\/|data\:)?(.{10})/gi, (m, m1, m2, m3) => { // ++remove m3 & logs
+            //console.log( m );
+            if ( m2 ) { return m }
+            //console.log( '^this to this v' );
+            //console.log( 'url(' + (m1||'') + path + m3 );
+            //console.log( path );
+            return 'url(' + (m1||'') + path + m3;
+        });
+        new_content = new_content.replace( /\@import\s*('|")(https?\:\/\/|\/|\/\/|data\:)?(.{10})/gi, (m, m1, m2, m3) => { // ++remove m3 & logs
+            //console.log( m );
+            if ( m2 ) { return m }
+            //console.log( '^this to this v' );
+            //console.log( '@import ' + (m1||'') + path + m3 );
+            //console.log( path );
+            return '@import ' + (m1||'') + path + m3;
+        });
+        return new_content;
+    };
     const response = await fetch( url );
     if ( !response.ok ) { return ''; }
-    return await response.text();
+    return await fixUrls( await response.text() );
 }
 const parseCSS = s => {
     const doc = document.implementation.createHTMLDocument( '' ),
@@ -23,53 +41,64 @@ const parseCSS = s => {
     doc.body.appendChild( style );
     return style.sheet.cssRules;
 };
+const importStyles = async ( parsed ) => {
+    let style = [];
+    for ( let rule of parsed ) {
+        if ( rule.constructor.name !== 'CSSImportRule' ) { break } // @import can only be at the start of a css document
+        style.push( await styleStructure( rule ) );
+    }
+    return style;
+};
 const styleStructure = async (el) => {
     const url = el?.href || window.location.href,
-          tag = el?.tagName?.toLowerCase() || 'import',
+          tag = el?.tagName?.toLowerCase() || '@import',
           content = el?.textContent || await getContent( url );
     let result = {
         tag,
         url,
         content,
-        path : getPath( url ), // !!!!!!!!!!!error is probably here
         parsed : parseCSS( content ),
-        el : el ? el : undefined
+        el
     };
 
-    result.imported = await importStyles( result.parsed, result.path );
+    result.imported = await importStyles( result.parsed ); // @import
     // ++media value before parsing
 
     return result;
 };
-const importStyles = async ( parsed, path ) => {
-    let style = [];
-    Object.entries( parsed ).some( async entry => {
-        const [key, rule] = entry;
-        if ( rule.constructor.name !== 'CSSImportRule' ) { return false }
-        style.push( styleStructure( rule ) );
-        return false;
-    });
-    return style;
-};
+
 
 let allStyles = []; // contains all tags providing styling
 document.querySelectorAll( 'link[rel=stylesheet], style' ).forEach( ( el ) => {
     allStyles.push( el );
 });
+allStyles = await Promise.all( allStyles.map( styleStructure ) );
 
-allStyles = await Promise.all( allStyles.map( async el => {
-    //style.import = await importStyles( style.parsed, style.path );
-    return await styleStructure( el );
-}));
+const structurePrint = structure => {
+    let store = [];
+    const imported = rules => {
+        let store = [];
+        if ( !rules.imported.length ) { return undefined }
+        for ( let rule in rules.imported ) {
+            store[rule] = [
+                rules.imported[rule].tag+' '+rules.imported[rule].url+' '+rules.imported[rule].el.media.mediaText,
+                imported( rules.imported[rule] ) || undefined
+            ];
+        }
+        return store;
+    };
+    for ( let rule in structure ) {
+        store[rule] = [
+            structure[rule].el.tagName.toLowerCase()+(structure[rule].el.id?'#'+structure[rule].el.id:''),
+            imported( structure[rule] ) || undefined // import goes after only to show the structure, the imported content goes before the parent style
+        ];
+    }
+    return store;
+};
 
-console.log( allStyles );
+console.log( structurePrint( allStyles ) );
 throw '';
 
-allStyles.forEach( a => {
-    console.log( a.import );
-});
-
-throw '';
 
 
 const getFirstScreenElements = () => {
