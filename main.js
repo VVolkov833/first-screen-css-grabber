@@ -52,7 +52,7 @@ const stylesStructure = async (el) => {
     const url = el?.href || window.location.href,
           tag = el?.tagName?.toLowerCase() || '@import',
           content = el?.textContent || await getContent( url );
-    let result = {
+    let result = { // some might be not needed
         tag,
         url,
         content,
@@ -69,18 +69,18 @@ const allStyles = await Promise.all( [...document.querySelectorAll( 'link[rel=st
 
 const structureShow = structure => {
     let lvl = 0;
-    const imported = rules => {
-        if ( !rules.imported.length ) { return }
+    const doimported = imported => {
+        if ( !imported.imported.length ) { return }
         lvl++;
-        for ( let rule of rules.imported ) {
-            console.log( '\t '.repeat(lvl)+'▶'+rule.tag+' '+rule.url );
-            imported( rule );
+        for ( let style of imported.imported ) {
+            console.log( '\t '.repeat(lvl)+'▶'+style.tag+' '+style.url );
+            doimported( style );
         }
         lvl--;
     };
-    for ( let rule of structure ) {
-        console.log( '▶'+rule.el.tagName.toLowerCase()+(rule.el.id?'#'+rule.el.id:'')+(rule.tag==='link'?' '+rule.url:'') );
-        imported( rule ); // import goes after only to show the structure, the imported content goes before the parent style
+    for ( let style of structure ) {
+        console.log( '▶'+style.el.tagName.toLowerCase()+(style.el.id?'#'+style.el.id:'')+(style.tag==='link'?' '+style.url:'') );
+        doimported( style ); // import goes after only to show the structure, the imported content goes before the parent style
     }
 };
 
@@ -107,7 +107,7 @@ const dom = (() => { //!!++test on fixed elements, especially, borlabs
     win.height = Math.round( win.height * 1.1 );
     const scroll = { top: document.documentElement.scrollTop, left: document.documentElement.scrollLeft };
 
-    let dom = { all : [], first : [], rest : [] }; //++-- rest not needed actually?
+    let dom = { all : [], first : [], rest : [] }; //++-- rest not needed actually? all too?
     document.body.querySelectorAll( '*' ).forEach( el => {
         dom.all.push( el );
         ( onFirstScreen( el ) ? dom.first : dom.rest ).push( el );
@@ -128,181 +128,113 @@ const stylesBundle = structure => {
     // ++split / not split a selector - add to settings
     // ++try-catch if selector is valid after cleaning with logging in the console
     const bundle = { first : '', rest : '', unused : '', randu : '',
-        wrap : function(content, wrapper) { // ++just make it not iterable
-            if ( !content ) { return {} }
-            let result = {};
-            for ( let key in this ) {
-                if ( typeof this[key] !== 'string' && this[key] !instanceof String ) { continue }
-                result[key] = wrapper + '{' + content + '}';
-            }
-            return result;
-        },
-        add : function(rules = {}) {
-            for ( let key in this ) {
-                if ( typeof this[key] !== 'string' && this[key] !instanceof String ) { continue }
-                this.key += rules;
-            }
+        add : function(distributed) {
+            merge( this, distributed );
         }
     };
+    Object.defineProperty( bundle, 'add', { enumerable: false } );
+    const dummy = { ...bundle };
 
-    const proceed = rule => {
-        const name = rule.constructor.name;
-        if ( name === 'CSSMediaRule' ) {
-            const result = proceed( value.cssRules );
-            firstScreenCSS += result ? '@media ' + value.conditionText + '{' + result + '}' : '';
-            return;
+    const merge = (a, b) => {
+        for ( let i in a ) { a[i] += b[i] || ''; }
+        return a;
+    };
+    const wrap = (a, wrap) => {
+        if ( !wrap ) { return a }
+        for ( let i in a ) {
+            if ( !a[i] ) { continue } //++ simplify to 1 string
+            a[i] = `${wrap} { ${a[i]} }`;
         }
-        if ( name === 'CSSSupportsRule' ) {
-            const result = proceed( value.cssRules );
-            firstScreenCSS += result ? '@supports ' + value.conditionText + '{' + result + '}' : '';
-            return;
-        }
-        if ( name === 'CSSFontFaceRule' ) {
-            css.firstScreenCSS += value.cssText;
-            return;
-        }
-        if ( name !== 'CSSStyleRule' ) {
-            // console.error( 'Not used rule ' + name ); console.log( rule );
-            // ignore CSSImportRule, as it is already retreived and parsed
-            return;
-        }
+        return a;
+    };
 
-/*
-        const clearSelector = value.selectorText
+    const distribute = rule => {
+        // ++ can split here, actually
+        const selector = rule.selectorText;
+        const clearSelector = selector
             .replace( /\s:{1,2}(?:before|after)/gi, ' *' ) // .class ::before -> .class *
             .replace( /:{1,2}(?:before|after|focus\-within|focus\-visible|first\-letter|focus|hover|active|target|visited)/gi, '' ) // .class::before -> .class
             .replace( /:not\(\)/, '' ) // :not(:focus)
             .replace(/^[\,\s]+|[\,\s]+$/g, ''); // , .class,
-        try { // in case there are broken selectors after clearing..
-            document.querySelector( clearSelector );
-        } catch { return }
+
+        try { document.querySelector( clearSelector ) }
+        catch { console.log( 'Bad selector: ' + clearSelector ); return }
 
         const elements = document.querySelectorAll( clearSelector );
+        const inDOM = elements.length || false; // ++ || return;
+        const inFirstScreen = Array.prototype.some.call( elements, el => { return dom.first.includes( el ) });
 
-        const isInScreen = elements.length || false; // ++?? can return here
-        const isInFirstScreen = Array.prototype.some.call( elements, el => { return firstScreenElements.includes( el ) });
-//*/
-    };
-    const imported = rules => {
-        if ( !rules.imported.length ) { return }
-        for ( let rule of rules.imported ) {
-            console.log( '\t '.repeat(lvl)+'▶'+rule.tag+' '+rule.url );
-            imported( rule );
+        return {
+            first : inFirstScreen && rule.cssText || '',
+            rest : inDOM && !inFirstScreen && rule.cssText || '',
+            unused : !inDOM && rule.cssText || '',
+            randu : !inFirstScreen && rule.cssText || ''
         }
     };
-    for ( let rules of structure ) {
-        imported( rule );
-        console.log( '▶'+rule.el.tagName.toLowerCase()+(rule.el.id?'#'+rule.el.id:'')+(rule.tag==='link'?' '+rule.url:'') );
-    }
-};
 
-throw '';
+    const process_style = (style) => {
 
-const filterVisibleCSS = () => {
+        const process_rules = rules => { // ++is it even needed?
 
-    let CSS = { firstScreenCSS: '', restScreenCSS: '', unusedCSS: '', restAndUnusedCSS: '' };
+            let distributed = { ...dummy }; // ++rename the distributed to something easier
 
-    const goThroughRules = ( list, ind ) => {
+            for ( let rule of rules ) {
+                const name = rule.constructor.name;
 
-        const fixUrls = url => {
-            return url.replace( /url\(('|")?(https?\:\/\/|\/|\/\/|data\:)?/gi, (m, m1, m2) => {
-                if ( m2 ) { return m }
-                return 'url(' + m1 + allStylesURLBase[ ind ];
-            });
+                if ( name === 'CSSMediaRule' ) {
+                    distributed = merge( distributed, wrap( process_rules( rule.cssRules ), '@media '+rule.conditionText ) );
+                    continue;
+                }
+                // ++name === 'CSSSupportsRule'
+                if ( name === 'CSSFontFaceRule' ) {
+                    // css.firstScreenCSS += value.cssText; // it just goes to the first screen anyways
+                    distributed = merge( distributed, { first : rule.cssText} );
+                    continue;
+                }
+                if ( name !== 'CSSStyleRule' ) {
+                    // console.error( 'Not used rule ' + name ); console.log( rule );
+                    // ignore CSSImportRule, as it is already retreived and parsed ++make proper printing!!
+                    continue;
+                }
+                distributed = merge( distributed, distribute( rule ) );
+            }
+            return distributed;
         };
 
-        let css = {};
-        Object.keys( CSS ).forEach( a => { css[ a ] = '' });
-
-        Object.entries( list ).forEach( entry => {
-            const [key, value] = entry;
-
-            const wrappingRules = { CSSMediaRule: '@media', CSSSupportsRule: '@supports' };
-            if ( Object.keys( wrappingRules ).includes( value.constructor.name ) ) {
-                const c = goThroughRules( value.cssRules );
-                const format = css => {
-                    return css ? wrappingRules[ value.constructor.name ]+' '+value.conditionText+'{' + css + '}' : ''; // ++can format here with tabs and line breaks
-                };
-                Object.entries( c ).forEach( a => { css[ a[0] ] += format( a[1] ) });
-                return;
-            }
-
-            if ( value.constructor.name === 'CSSFontFaceRule' ) {
-                value.style.src = fixUrls( value.style.src );
-                css.firstScreenCSS += value.cssText;
-                return;
-            }
-
-            /*
-            if ( value.constructor.name === 'CSSImportRule' ) {
-                // ++assume, that it is absolute.. for now, as @import is not often used in our projects. write me if you want it working
-                const replaceToken = '{{' + ind + key + '}}'; // save the place to add css after fetching and parsing
-                firstScreenCSS += replaceToken;
-                fetchContent( value.href ).then( t => { firstScreenCSS.replace( replaceToken, t ) } ); // ++parse ++filter
-                return;
-            }
-            //*/
-            if ( value.constructor.name !== 'CSSStyleRule' ) {
-                //console.error( 'Not used rule ' + value.constructor.name ); console.log( value );
-                return;
-            }
-
-            const clearSelector = value.selectorText
-                .replace( /\s:{1,2}(?:before|after)/gi, ' *' ) // .class ::before -> .class *
-                .replace( /:{1,2}(?:before|after|focus\-within|focus\-visible|first\-letter|focus|hover|active|target|visited)/gi, '' ) // .class::before -> .class
-                .replace( /:not\(\)/, '' ) // :not(:focus)
-                .replace(/^[\,\s]+|[\,\s]+$/g, ''); // , .class,
-            try { // in case there are broken selectors after clearing..
-                document.querySelector( clearSelector );
-            } catch { return }
-
-            const elements = document.querySelectorAll( clearSelector );
-
-            const isInScreen = elements.length || false; // ++?? can return here
-            const isInFirstScreen = Array.prototype.some.call( elements, el => { return firstScreenElements.includes( el ) });
-
-            // fix url() address
-            ['background', 'background-image', 'mask', 'mask-image'].forEach( att => {
-                if ( !value.style[ att ] ) { return }
-                value.style[ att ] = fixUrls( value.style[ att ] );
-            });
-
-            css.firstScreenCSS += isInFirstScreen && value.cssText || '';
-            css.restScreenCSS += isInScreen && !isInFirstScreen && value.cssText || '';
-            css.unusedCSS += !isInScreen && value.cssText || '';
-            css.restAndUnusedCSS += isInScreen && value.cssText || '';
-
-        });
-
-        return css;
+        return process_rules( style.parsed );
     };
 
-    allStylesContentParsed.forEach( (s,i) => {
-        const css = goThroughRules( s, i );
-        Object.entries( css ).forEach( a => { CSS[ a[0] ] += a[1] });
-    });
+    const doimported = imported => { // ++ convert to @media
+        if ( !imported.imported.length ) { return }
+        for ( let style of imported.imported ) {
+            doimported( style );
+            bundle.add( wrap( process_style( style ), // add @media to import if media conditions are provided
+                style.el.media?.mediaText ? '@media '+style.el.media.mediaText : ''
+            ));
+        }
+    };
+    for ( let style of structure ) {
+        doimported( style );
+        bundle.add( process_style( style ) );
+    }
 
-    return CSS;
+    return { ...bundle };
 };
 
-const { firstScreenCSS, restScreenCSS, unusedCSS, restAndUnusedCSS } = filterVisibleCSS();
-
-const style = document.createElement( 'style' );
-document.body.prepend( style );
-style.textContent = firstScreenCSS;
-
-//    await new Promise( resolve => setTimeout( resolve, 5000 ) );
+//stylesBundle( allStyles )
+//throw '';
 
 //* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
 // remove elementsm which are not on the first screen
-firstScreenElements.push( style );
+
 document.body.querySelectorAll( '*' ).forEach( el => {
-    if ( firstScreenElements.includes( el ) ) { return; }
+    if ( dom.first.includes( el ) ) { return; }
     el.remove();
 }); //*/
+
 // remove the <style and <link
-allStyles.forEach( el => {
-    el.remove();
+allStyles.forEach( style => {
+    style.el.remove();
 });
 
 // print the styles
@@ -324,16 +256,26 @@ const printStyles = (title,content) => {
     });
 };
 
-printStyles( 'First Screen CSS', firstScreenCSS );
-printStyles( 'Rest Screen CSS', restScreenCSS );
-printStyles( 'Unused CSS', unusedCSS );
-printStyles( 'Rest Screen and Unused CSS', restAndUnusedCSS );
+const new_styles = stylesBundle( allStyles );
 
+printStyles( 'First Screen CSS', new_styles.first );
+printStyles( 'Rest Screen CSS', new_styles.rest );
+printStyles( 'Unused CSS', new_styles.unused );
+printStyles( 'Rest Screen and Unused CSS', new_styles.randu );
+
+
+// print the first-screen style
+const style = document.createElement( 'style' );
+document.body.prepend( style );
+style.textContent = new_styles.first;
 
 // ++beautify
 
-// ++add the list to pick which styles to proceed
+// ++add the list to pick which styles to process_style
 
 // ++should also separate selectors by , for smaller first screen and check each separately, but that will cause doubling of attributes on the rest screen
 // ++exclude :focus, :hover and others from the first screen
 // ++Yborlabs overflow (position:fixed) goes to second screen
+// ++print structure to console
+// ++print ignored rules to console
+//++!!!! Y rest doesn't collect
