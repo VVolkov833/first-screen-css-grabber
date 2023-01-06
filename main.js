@@ -1,4 +1,3 @@
-// ++ mention @import can behave like @media el.media.mediaText
 const stylesStructure = async (el) => {
 
     const getContent = async url => {
@@ -67,26 +66,6 @@ const stylesStructure = async (el) => {
 
 const allStyles = await Promise.all( [...document.querySelectorAll( 'link[rel=stylesheet], style' )].map( stylesStructure ) );
 
-const structureShow = structure => {
-    let lvl = 0;
-    const doimported = imported => {
-        if ( !imported.imported.length ) { return }
-        lvl++;
-        for ( let style of imported.imported ) {
-            console.log( '\t '.repeat(lvl)+'▶'+style.tag+' '+style.url );
-            doimported( style );
-        }
-        lvl--;
-    };
-    for ( let style of structure ) {
-        console.log( '▶'+style.el.tagName.toLowerCase()+(style.el.id?'#'+style.el.id:'')+(style.tag==='link'?' '+style.url:'') );
-        doimported( style ); // import goes after only to show the structure, the imported content goes before the parent style
-    }
-};
-
-//structureShow( allStyles );
-//throw '';
-
 const dom = (() => { //!!++test on fixed elements, especially, borlabs
 
     const onFirstScreen = el => {
@@ -127,9 +106,9 @@ const dom = (() => { //!!++test on fixed elements, especially, borlabs
 const stylesBundle = structure => {
     // ++split / not split a selector - add to settings
     // ++try-catch if selector is valid after cleaning with logging in the console
-    const bundle = { first : '', rest : '', unused : '', randu : '',
-        add : function(distributed) {
-            merge( this, distributed );
+    const bundle = { first : '', rest : '', unused : '', randu : '', all : '',
+        add : function(values) {
+            merge( this, values );
         }
     };
     Object.defineProperty( bundle, 'add', { enumerable: false } );
@@ -158,7 +137,7 @@ const stylesBundle = structure => {
             .replace(/^[\,\s]+|[\,\s]+$/g, ''); // , .class,
 
         try { document.querySelector( clearSelector ) }
-        catch { console.log( 'Bad selector: ' + clearSelector ); return }
+        catch { /* console.log( 'Bad selector: ' + clearSelector );*/ return }
 
         const elements = document.querySelectorAll( clearSelector );
         const inDOM = elements.length || false; // ++ || return;
@@ -168,7 +147,8 @@ const stylesBundle = structure => {
             first : inFirstScreen && rule.cssText || '',
             rest : inDOM && !inFirstScreen && rule.cssText || '',
             unused : !inDOM && rule.cssText || '',
-            randu : !inFirstScreen && rule.cssText || ''
+            randu : !inFirstScreen && rule.cssText || '',
+            all : rule.cssText || ''
         }
     };
 
@@ -185,9 +165,11 @@ const stylesBundle = structure => {
                     distributed = merge( distributed, wrap( process_rules( rule.cssRules ), '@media '+rule.conditionText ) );
                     continue;
                 }
-                // ++name === 'CSSSupportsRule'
+                if ( name === 'CSSSupportsRule' ) {
+                    distributed = merge( distributed, wrap( process_rules( rule.cssRules ), '@supports '+rule.conditionText ) );
+                    continue;
+                }
                 if ( name === 'CSSFontFaceRule' ) {
-                    // css.firstScreenCSS += value.cssText; // it just goes to the first screen anyways
                     distributed = merge( distributed, { first : rule.cssText} );
                     continue;
                 }
@@ -221,6 +203,8 @@ const stylesBundle = structure => {
     return { ...bundle };
 };
 
+const new_styles = stylesBundle( allStyles );
+
 //stylesBundle( allStyles )
 //throw '';
 
@@ -228,7 +212,7 @@ const stylesBundle = structure => {
 // remove elementsm which are not on the first screen
 
 document.body.querySelectorAll( '*' ).forEach( el => {
-    if ( dom.first.includes( el ) ) { return; }
+    if ( dom.first.includes( el ) ) { return }
     el.remove();
 }); //*/
 
@@ -237,11 +221,16 @@ allStyles.forEach( style => {
     style.el.remove();
 });
 
-// print the styles
-const printStyles = (title,content) => {
+// print the first-screen style
+const style = document.createElement( 'style' );
+document.head.append( style );
+style.textContent = new_styles.first;
+
+// print the CSS
+const printStyles = (title, content, total) => {
     const headline = document.createElement( 'h2' );
     document.body.append( headline );
-    headline.innerHTML = title;
+    headline.innerHTML = title + '&nbsp;&nbsp; <small>'+( Math.round( content.length * 1000 / total ) / 10 )+'% of total</small>';
     const textarea = document.createElement( 'textarea' );
     document.body.append( textarea );
     textarea.value = content;
@@ -256,18 +245,29 @@ const printStyles = (title,content) => {
     });
 };
 
-const new_styles = stylesBundle( allStyles );
+printStyles( 'First Screen CSS', new_styles.first, new_styles.all.length );
+printStyles( 'Rest Screen CSS', new_styles.rest, new_styles.all.length );
+printStyles( 'Unused CSS', new_styles.unused, new_styles.all.length );
+printStyles( 'Rest Screen and Unused CSS', new_styles.randu, new_styles.all.length );
 
-printStyles( 'First Screen CSS', new_styles.first );
-printStyles( 'Rest Screen CSS', new_styles.rest );
-printStyles( 'Unused CSS', new_styles.unused );
-printStyles( 'Rest Screen and Unused CSS', new_styles.randu );
-
-
-// print the first-screen style
-const style = document.createElement( 'style' );
-document.body.prepend( style );
-style.textContent = new_styles.first;
+// print the styles structure in console
+const structureShow = structure => {
+    let lvl = 0;
+    const doimported = imported => {
+        if ( !imported.imported.length ) { return }
+        lvl++;
+        for ( let style of imported.imported ) {
+            console.log( '\t '.repeat(lvl)+'▶'+style.tag+' '+style.url );
+            doimported( style );
+        }
+        lvl--;
+    };
+    for ( let style of structure ) {
+        console.log( '▶'+style.el.tagName.toLowerCase()+(style.el.id?'#'+style.el.id:'')+(style.tag==='link'?' '+style.url:'') );
+        doimported( style ); // import goes after only to show the structure, the imported content goes before the parent style
+    }
+};
+structureShow( allStyles );
 
 // ++beautify
 
@@ -278,4 +278,4 @@ style.textContent = new_styles.first;
 // ++Yborlabs overflow (position:fixed) goes to second screen
 // ++print structure to console
 // ++print ignored rules to console
-//++!!!! Y rest doesn't collect
+//++!!!! Y rest doesn't collect - compare with the initial script
