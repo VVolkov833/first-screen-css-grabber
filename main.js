@@ -86,7 +86,7 @@ const dom = (() => {
     win.height = Math.round( win.height * 1.1 );
     const scroll = { top: document.documentElement.scrollTop, left: document.documentElement.scrollLeft };
 
-    let dom = { all : [], first : [], rest : [] }; //++-- rest not needed actually? all too?
+    let dom = { all : [], first : [], rest : [] }; //++-- rest not needed actually? all too? or change tha alg to compare
     document.body.querySelectorAll( '*' ).forEach( el => {
         dom.all.push( el );
         ( onFirstScreen( el ) ? dom.first : dom.rest ).push( el );
@@ -189,7 +189,7 @@ const stylesBundle = structure => {
         return merge( file_markers, process_rules( style.parsed ) );
     };
 
-    const doimported = imported => { // ++ convert to @media
+    const doimported = imported => {
         if ( !imported.imported.length ) { return }
         for ( let style of imported.imported ) {
             doimported( style );
@@ -283,6 +283,5 @@ structureShow( allStyles );
 // ++print ignored rules to console
 //++!!!! Y rest doesn't collect - compare with the initial script
 // I blame selector going twice
-// different % counting method - like by the number of selectors
-// separate by files with /* file url or full */
+// different % counting method - like by the number of selectors or properties
 // fixed elements or their insides go to the rest, especially, borlabs
