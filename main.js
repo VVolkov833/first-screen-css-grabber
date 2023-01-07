@@ -66,7 +66,7 @@ const stylesStructure = async (el) => {
 
 const allStyles = await Promise.all( [...document.querySelectorAll( 'link[rel=stylesheet], style' )].map( stylesStructure ) );
 
-const dom = (() => { //!!++test on fixed elements, especially, borlabs
+const dom = (() => {
 
     const onFirstScreen = el => {
         const r = el.getBoundingClientRect();
@@ -115,7 +115,7 @@ const stylesBundle = structure => {
     const dummy = { ...bundle };
 
     const merge = (a, b) => {
-        for ( let i in a ) { a[i] += b[i] || ''; }
+        for ( let i in a ) { a[i] += b && b[i] || ''; }
         return a;
     };
     const wrap = (a, wrap) => {
@@ -183,7 +183,10 @@ const stylesBundle = structure => {
             return distributed;
         };
 
-        return process_rules( style.parsed );
+        const file_marker = '\n\n/* '+style.tag+(style.el.id?'#'+style.el.id:'')+(style.tag!=='style'?' '+style.url:'')+' */\n';
+        let file_markers = { ...dummy };
+        for ( let i in file_markers ) { file_markers[i] = file_marker; }
+        return merge( file_markers, process_rules( style.parsed ) );
     };
 
     const doimported = imported => { // ++ convert to @media
@@ -210,7 +213,6 @@ const new_styles = stylesBundle( allStyles );
 
 //* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
 // remove elementsm which are not on the first screen
-
 document.body.querySelectorAll( '*' ).forEach( el => {
     if ( dom.first.includes( el ) ) { return }
     el.remove();
@@ -226,11 +228,12 @@ const style = document.createElement( 'style' );
 document.head.append( style );
 style.textContent = new_styles.first;
 
+
 // print the CSS
 const printStyles = (title, content, total) => {
     const headline = document.createElement( 'h2' );
     document.body.append( headline );
-    headline.innerHTML = title + '&nbsp;&nbsp; <small>'+( Math.round( content.length * 1000 / total ) / 10 )+'% of total</small>';
+    headline.innerHTML = title + '&nbsp;&nbsp; <small>'+( Math.round( content.length * 10000 / total ) / 100 )+'% of total</small>';
     const textarea = document.createElement( 'textarea' );
     document.body.append( textarea );
     textarea.value = content;
@@ -263,7 +266,7 @@ const structureShow = structure => {
         lvl--;
     };
     for ( let style of structure ) {
-        console.log( '▶'+style.el.tagName.toLowerCase()+(style.el.id?'#'+style.el.id:'')+(style.tag==='link'?' '+style.url:'') );
+        console.log( '▶'+style.tag+(style.el.id?'#'+style.el.id:'')+(style.tag==='link'?' '+style.url:'') );
         doimported( style ); // import goes after only to show the structure, the imported content goes before the parent style
     }
 };
@@ -279,3 +282,7 @@ structureShow( allStyles );
 // ++print structure to console
 // ++print ignored rules to console
 //++!!!! Y rest doesn't collect - compare with the initial script
+// I blame selector going twice
+// different % counting method - like by the number of selectors
+// separate by files with /* file url or full */
+// fixed elements or their insides go to the rest, especially, borlabs
