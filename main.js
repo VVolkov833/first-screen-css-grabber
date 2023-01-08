@@ -1,13 +1,13 @@
 //let include_only = ['#sm-style-css']; // list of selectors to include only
 //include_only = [ ...document.querySelectorAll( include_only.join( ', ' ) ) ].map( el => el );
 
-let exclude = ['#borlabs-cookie-css', ]; // list of selectors to exclude
-exclude = [ ...document.querySelectorAll( include_only.join( ', ' ) ) ].map( el => el );
+//let exclude = ['#borlabs-cookie-css', ]; // list of selectors to exclude
+//exclude = [ ...document.querySelectorAll( exclude.join( ', ' ) ) ].map( el => el );
 
 const stylesStructure = async (el) => {
 
-    if ( include_only?.length && !include_only.includes( el ) ) { return }
-    if ( exclude?.length && exclude.includes( el ) ) { return }
+    if ( typeof include_only === 'array' && include_only?.length && !include_only.includes( el ) ) { return }
+    if ( typeof exclude === 'array' && exclude.includes( el ) ) { return }
 
     const getContent = async url => {
         const getPath = url => {
@@ -220,17 +220,17 @@ const new_styles = stylesBundle( allStyles );
 //stylesBundle( allStyles )
 //throw '';
 
-//* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
+/* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
 // remove elementsm which are not on the first screen
 document.body.querySelectorAll( '*' ).forEach( el => {
     if ( dom.first.includes( el ) ) { return }
     el.remove();
 }); //*/
 
-// remove the <style and <link
+//* remove the <style and <link
 allStyles.forEach( style => {
     style.el.remove();
-});
+}); //*/
 
 // print the first-screen style
 const style = document.createElement( 'style' );
