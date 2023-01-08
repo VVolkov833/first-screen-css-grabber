@@ -294,5 +294,5 @@ structureShow( allStyles );
 // I blame selector going twice
 // different % counting method - like by the number of selectors or properties
 // fixed elements or their insides go to the rest, especially, borlabs
-// ++add the list of slectors, that might appear in process - to keep in first or rest
+// ++add the list of slectors, that might appear in process - to keep in first or rest (and children as an option)
 // ++!!effect only those I can effect, like with id and -css at the end of it, styles with -before and -after
