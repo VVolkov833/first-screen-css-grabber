@@ -1,4 +1,13 @@
+//let include_only = ['#sm-style-css']; // list of selectors to include only
+//include_only = [ ...document.querySelectorAll( include_only.join( ', ' ) ) ].map( el => el );
+
+let exclude = ['#borlabs-cookie-css', ]; // list of selectors to exclude
+exclude = [ ...document.querySelectorAll( include_only.join( ', ' ) ) ].map( el => el );
+
 const stylesStructure = async (el) => {
+
+    if ( include_only?.length && !include_only.includes( el ) ) { return }
+    if ( exclude?.length && exclude.includes( el ) ) { return }
 
     const getContent = async url => {
         const getPath = url => {
@@ -64,7 +73,7 @@ const stylesStructure = async (el) => {
     return result;
 };
 
-const allStyles = await Promise.all( [...document.querySelectorAll( 'link[rel=stylesheet], style' )].map( stylesStructure ) );
+const allStyles = ( await Promise.all( [...document.querySelectorAll( 'link[rel=stylesheet], style' )].map( stylesStructure ) ) ).filter( s => s );
 
 const dom = (() => {
 
@@ -286,3 +295,4 @@ structureShow( allStyles );
 // different % counting method - like by the number of selectors or properties
 // fixed elements or their insides go to the rest, especially, borlabs
 // ++add the list of slectors, that might appear in process - to keep in first or rest
+// ++!!effect only those I can effect, like with id and -css at the end of it, styles with -before and -after
