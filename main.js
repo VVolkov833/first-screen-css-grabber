@@ -78,6 +78,13 @@ const allStyles = ( await Promise.all( [...document.querySelectorAll( 'link[rel=
 const dom = (() => {
 
     const onFirstScreen = el => {
+        const isFixed = el => {
+            if ( el === document ) { return false }
+            const position = window.getComputedStyle( el )?.getPropertyValue( 'position' );
+            if ( position === 'fixed' ) { return true }
+            return isFixed( el.parentNode );
+            // ++ the fixed el is in range && is visible
+        };
         const r = el.getBoundingClientRect();
         return (
             r.top + scroll.top < win.height &&
@@ -85,7 +92,7 @@ const dom = (() => {
             //&&
             //r.bottom + scroll.top > 0 &&
             //r.right + scroll.left > 0
-        );
+        ) || isFixed( el );
     };
 
     const win = {
@@ -221,11 +228,12 @@ const new_styles = stylesBundle( allStyles );
 //throw '';
 
 /* it can effect the upper placed elements, if something is vertically centered or aligned by bottom
-// remove elementsm which are not on the first screen
+// remove elementsm which are not on the first screen, except fixed, which can be defined inside a rest-screen element
 document.body.querySelectorAll( '*' ).forEach( el => {
     if ( dom.first.includes( el ) ) { return }
     el.remove();
 }); //*/
+
 
 //* remove the <style and <link
 allStyles.forEach( style => {
