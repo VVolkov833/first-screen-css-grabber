@@ -186,7 +186,8 @@ const stylesBundle = structure => {
                     continue;
                 }
                 if ( name === 'CSSFontFaceRule' ) {
-                    distributed = merge( distributed, { first : rule.cssText} );
+                    rule.style.fontDisplay = 'swap'; // ++-- add to settings
+                    distributed = merge( distributed, { first : rule.cssText } );
                     continue;
                 }
                 if ( name !== 'CSSStyleRule' ) {
