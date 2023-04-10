@@ -251,7 +251,7 @@ style.textContent = new_styles.first;
 const printStyles = (title, content, total) => {
     const headline = document.createElement( 'h2' );
     document.body.append( headline );
-    headline.innerHTML = title + '&nbsp;&nbsp; <small>'+( Math.round( content.length * 10000 / total ) / 100 )+'% of total</small>';
+    headline.innerHTML = title;// + '&nbsp;&nbsp; <small>'+( Math.round( content.length * 10000 / total ) / 100 )+'% of total</small>';
     const textarea = document.createElement( 'textarea' );
     document.body.append( textarea );
     textarea.value = content;
